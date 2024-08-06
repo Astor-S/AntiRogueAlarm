@@ -12,6 +12,7 @@ public class Alarm : MonoBehaviour
     private AudioSource _audioSource;
     private House _house;
     private WaitForSeconds _wait;
+    private Coroutine _coroutine;
 
     private float _volumeChange = 0.1f;
     private float _volumeChangeInterval = 1f;
@@ -31,59 +32,82 @@ public class Alarm : MonoBehaviour
 
     private void OnEnable()
     {
-        _house.HouseBreakInDetected += IncreaseVolume;
-        _house.HouseBreakOutDetected += DecreaseVolume;
+        _house.HouseBreakInDetected += TurnOnAlarm;
+        _house.HouseBreakOutDetected += TurnOffAlarm;
     }
 
     private void OnDisable()
     {
-        _house.HouseBreakInDetected -= IncreaseVolume;
-        _house.HouseBreakOutDetected -= DecreaseVolume;
+        _house.HouseBreakInDetected -= TurnOnAlarm;
+        _house.HouseBreakOutDetected -= TurnOffAlarm;
     }
 
-    private void IncreaseVolume()
+    public void IncreaseVolume()
     {
-        if (_isIncreasingVolume == false)
-        {
-            StopCoroutine(ProgressiveDecreaseVolume());
-            _isDecreasingVolume = false;
+        AdjustVolume(_volumeChange);
+    }
 
-            StartCoroutine(ProgressiveIncreaseVolume());
-            _audioSource.Play();
+    public void DecreaseVolume()
+    {
+        AdjustVolume(-_volumeChange);
+    }
+
+    private void TurnOnAlarm()
+    {
+        IncreaseVolume();
+    }
+
+    private void TurnOffAlarm()
+    {
+        DecreaseVolume();
+    }
+
+    private void AdjustVolume(float volumeChange)
+    {
+        if (volumeChange > 0)
+        {
+            if (_isIncreasingVolume == false)
+            {
+                StopCoroutineIfRunning();
+
+                _isDecreasingVolume = false;
+
+                _coroutine = StartCoroutine(ProgressiveAdjustmentVolume(volumeChange, _maxVolume));
+                _audioSource.Play();
+            }
+        }
+        else if (volumeChange < 0)
+        {
+            if (_isDecreasingVolume == false)
+            {
+                StopCoroutineIfRunning();
+
+                _isIncreasingVolume = false;
+
+                _coroutine = StartCoroutine(ProgressiveAdjustmentVolume(volumeChange, _minVolume));
+            }
         }
     }
 
-    private void DecreaseVolume()
+    private void StopCoroutineIfRunning()
     {
-        if (_isDecreasingVolume == false)
+        if (_coroutine != null)
         {
-            StopCoroutine(ProgressiveIncreaseVolume());
-            _isIncreasingVolume = false;
-
-            StartCoroutine(ProgressiveDecreaseVolume());
+            StopCoroutine(_coroutine);
         }
     }
 
-    private IEnumerator ProgressiveIncreaseVolume()
+    private IEnumerator ProgressiveAdjustmentVolume(float volumeChange, float targetVolume)
     {
-        _isIncreasingVolume = true;
+        if (volumeChange > 0)
+            _isIncreasingVolume = true;
+        else if (volumeChange < 0)
+            _isDecreasingVolume = true;
 
-        while (_isIncreasingVolume)
+        while ((_isIncreasingVolume && volumeChange > 0) || (_isDecreasingVolume && volumeChange < 0))
         {
-            _audioSource.volume = Mathf.MoveTowards(_audioSource.volume, _maxVolume, _volumeChange);
+            _audioSource.volume = Mathf.MoveTowards(_audioSource.volume, targetVolume, Mathf.Abs(volumeChange));
 
-            yield return _wait;
-        }
-    }
-
-    private IEnumerator ProgressiveDecreaseVolume()
-    {
-        _isDecreasingVolume = true;
-
-        while (_isDecreasingVolume)
-        {
-            _audioSource.volume = Mathf.MoveTowards(_audioSource.volume, _minVolume, _volumeChange);
-            
             yield return _wait;
         }
     }
