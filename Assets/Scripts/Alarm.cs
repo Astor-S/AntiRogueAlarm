@@ -66,24 +66,29 @@ public class Alarm : MonoBehaviour
     {
         if (volumeChange > 0)
         {
-            if (_isIncreasingVolume == false)
-            {
-                StopCoroutineIfRunning();
-
-                _isDecreasingVolume = false;
-
-                _coroutine = StartCoroutine(ProgressiveAdjustmentVolume(volumeChange, _maxVolume));
-                _audioSource.Play();
-            }
+            HandleVolumeChange(volumeChange, true);
         }
         else if (volumeChange < 0)
         {
-            if (_isDecreasingVolume == false)
+            HandleVolumeChange(volumeChange, false);
+        }
+    }
+
+    private void HandleVolumeChange(float volumeChange, bool isIncreasing)
+    {
+        if ((isIncreasing && _isIncreasingVolume == false) || (isIncreasing == false && _isDecreasingVolume == false))
+        {
+            StopCoroutineIfRunning();
+
+            if (isIncreasing)
             {
-                StopCoroutineIfRunning();
-
+                _isDecreasingVolume = false;
+                _coroutine = StartCoroutine(ProgressiveAdjustmentVolume(volumeChange, _maxVolume));
+                _audioSource.Play();
+            }
+            else
+            {
                 _isIncreasingVolume = false;
-
                 _coroutine = StartCoroutine(ProgressiveAdjustmentVolume(volumeChange, _minVolume));
             }
         }
