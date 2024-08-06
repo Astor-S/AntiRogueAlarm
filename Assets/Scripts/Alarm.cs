@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
 
-[RequireComponent (typeof(AudioSource))]
+[RequireComponent(typeof(AudioSource))]
 [RequireComponent(typeof(House))]
 
 public class Alarm : MonoBehaviour
@@ -11,21 +11,16 @@ public class Alarm : MonoBehaviour
 
     private AudioSource _audioSource;
     private House _house;
-    private WaitForSeconds _wait;
     private Coroutine _coroutine;
 
-    private float _volumeChange = 0.1f;
-    private float _volumeChangeInterval = 1f;
+    private float _volumeChangeRate = 0.1f;
     private float _maxVolume = 1f;
     private float _minVolume = 0f;
-    private bool _isIncreasingVolume;
-    private bool _isDecreasingVolume;
 
     private void Awake()
     {
         _audioSource = GetComponent<AudioSource>();
         _house = GetComponent<House>();
-        _wait = new WaitForSeconds(_volumeChangeInterval);
         _audioSource.clip = _audioClip;
         _audioSource.volume = _volume;
     }
@@ -42,56 +37,20 @@ public class Alarm : MonoBehaviour
         _house.HouseBreakOutDetected -= TurnOffAlarm;
     }
 
-    public void IncreaseVolume()
-    {
-        AdjustVolume(_volumeChange);
-    }
-
-    public void DecreaseVolume()
-    {
-        AdjustVolume(-_volumeChange);
-    }
-
     private void TurnOnAlarm()
     {
-        IncreaseVolume();
+        HandleVolumeChange(_maxVolume);
     }
 
     private void TurnOffAlarm()
     {
-        DecreaseVolume();
+        HandleVolumeChange(_minVolume);
     }
 
-    private void AdjustVolume(float volumeChange)
+    private void HandleVolumeChange(float targetVolume)
     {
-        if (volumeChange > 0)
-        {
-            HandleVolumeChange(volumeChange, true);
-        }
-        else if (volumeChange < 0)
-        {
-            HandleVolumeChange(volumeChange, false);
-        }
-    }
-
-    private void HandleVolumeChange(float volumeChange, bool isIncreasing)
-    {
-        if ((isIncreasing && _isIncreasingVolume == false) || (isIncreasing == false && _isDecreasingVolume == false))
-        {
-            StopCoroutineIfRunning();
-
-            if (isIncreasing)
-            {
-                _isDecreasingVolume = false;
-                _coroutine = StartCoroutine(ProgressiveAdjustmentVolume(volumeChange, _maxVolume));
-                _audioSource.Play();
-            }
-            else
-            {
-                _isIncreasingVolume = false;
-                _coroutine = StartCoroutine(ProgressiveAdjustmentVolume(volumeChange, _minVolume));
-            }
-        }
+        StopCoroutineIfRunning();
+        _coroutine = StartCoroutine(ProgressiveAdjustmentVolume(targetVolume));
     }
 
     private void StopCoroutineIfRunning()
@@ -102,18 +61,13 @@ public class Alarm : MonoBehaviour
         }
     }
 
-    private IEnumerator ProgressiveAdjustmentVolume(float volumeChange, float targetVolume)
+    private IEnumerator ProgressiveAdjustmentVolume(float targetVolume)
     {
-        if (volumeChange > 0)
-            _isIncreasingVolume = true;
-        else if (volumeChange < 0)
-            _isDecreasingVolume = true;
-
-        while ((_isIncreasingVolume && volumeChange > 0) || (_isDecreasingVolume && volumeChange < 0))
+        while (_audioSource.volume != targetVolume)
         {
-            _audioSource.volume = Mathf.MoveTowards(_audioSource.volume, targetVolume, Mathf.Abs(volumeChange));
-
-            yield return _wait;
+            _audioSource.volume = Mathf.MoveTowards(_audioSource.volume, targetVolume, _volumeChangeRate * Time.deltaTime);
+            
+            yield return null;
         }
     }
 }
