@@ -16,6 +16,9 @@ public class House : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
-        HouseBreakOutDetected?.Invoke();
+        if (other.gameObject.TryGetComponent(out Thief _))
+        {
+            HouseBreakOutDetected?.Invoke();
+        }
     }
 }
